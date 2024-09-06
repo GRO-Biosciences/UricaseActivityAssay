@@ -1,0 +1,16 @@
+Start: 2024-09-05_12-34-53
+User: Mark Cerutti
+Protocol:
+    Name: HT Uricase Activity v2.0
+    Version: 2
+Input Plates:
+    - 2065-UOX-0001
+Output Plates:
+Metadata:
+    Lysis: No
+    Lysis Volume: 340
+    Assay Sample Dilution Factor: 1
+    Assay Sample Volume: 4
+    Uricase Sample Addition Timestamp: 2024-09-05 12:36:14
+    Uric Acid Addition Timestamp: 2024-09-05 12:43:08
+End: 2024-09-05_12-59-07
