@@ -131,7 +131,7 @@ def scatterplot_samplenames_relative_abs(df, date_time, expt_id):
     plt.close()
 
 
-def final_percentage_consumed(df):
+def final_percentage_consumed(df, date_time, expt_id):
     headers_to_exclude = ['Relative Time', 'Temperature']
     headers_to_include = [col for col in df.columns if col not in headers_to_exclude]
 
@@ -145,6 +145,8 @@ def final_percentage_consumed(df):
     plt.ylabel('15 minute % Consumed')
     plt.title('% of Uric Acid Consumed \nfrom First to Last Plate Read')
     plt.tight_layout()
+    plt.savefig(
+        f"C:\\Users\\MarkCerutti\\PycharmProjects\\UricaseActivityAssay\\plots\\{date_time}_{expt_id}_PercentConsumed.png")
     plt.show()
     # Perform subtraction
     difference_series = 100 - (df_subset.iloc[0] - df_subset.iloc[-1])
@@ -153,6 +155,27 @@ def final_percentage_consumed(df):
     plt.ylabel('15 minute % Uric Acid Remaining')
     plt.title('% of Uric Acid Remaining \nfrom First to Last Plate Read')
     plt.tight_layout()
+    plt.savefig(
+        f"C:\\Users\\MarkCerutti\\PycharmProjects\\UricaseActivityAssay\\plots\\{date_time}_{expt_id}_PercentConsumed.png")
+    plt.show()
+    return
+
+
+def final_overall_uric_acid(bg_removed_df, date_time, expt_id):
+    headers_to_exclude = ['Relative Time', 'Temperature']
+    headers_to_include = [col for col in bg_removed_df.columns if col not in headers_to_exclude]
+
+    # Create subset dataframes
+    df_subset = bg_removed_df.loc[:, headers_to_include]
+
+    # Perform subtraction
+    lastval_series = df_subset.iloc[-1].sort_values(ascending=True)
+    lastval_series.plot(kind='bar')
+    plt.ylabel('Background Subtracted Abs at 15 Min')
+    plt.title('Uric Acid Remaining\nat Last Plate Read')
+    plt.tight_layout()
+    plt.savefig(
+        f"C:\\Users\\MarkCerutti\\PycharmProjects\\UricaseActivityAssay\\plots\\{date_time}_{expt_id}_UricAcidRemaining.png")
     plt.show()
     return
 
@@ -164,7 +187,6 @@ yaml_filepath = "2024-09-05_12-34-53_Donphan.yaml"
 bg_filepath = "UoxBG_WCL-240905-005.asc"
 kinetic_filepath = "UoxKinetic_WCL-240905-006.asc"
 platemap_filepath = "platemap.xlsx"
-
 
 # Read in YAML file
 yaml_dict = read_yaml(yaml_filepath)
@@ -182,4 +204,7 @@ sample_df = map_sample_names(standardized_data, platemap_filepath)
 # Plot the standardized absorbance data using the sample names
 scatterplot_samplenames_relative_abs(sample_df, yaml_dict['Start'], yaml_dict['Input Plates'][0][0:4])
 # Create bar charts of % consumed and % remaining uric acid
-final_percentage_consumed(sample_df)
+final_percentage_consumed(sample_df,yaml_dict['Start'], yaml_dict['Input Plates'][0][0:4])
+# Create bar chart
+sample_absolute_df = map_sample_names(transformed_data, platemap_filepath)
+final_overall_uric_acid(sample_absolute_df,yaml_dict['Start'], yaml_dict['Input Plates'][0][0:4])
