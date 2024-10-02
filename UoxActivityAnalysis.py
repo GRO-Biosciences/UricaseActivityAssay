@@ -1,4 +1,3 @@
-import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 import yaml
@@ -10,7 +9,6 @@ import os
 import requests
 from pathlib import Path
 from AWSHelper import get_aws_secret
-
 
 def select_file(title_str, filetype):
     root = tk.Tk()
@@ -110,7 +108,7 @@ def scatterplot_wellnames_relative_abs(df, date_time, expt_id, dest_dir):
                     plt.scatter(df['Relative Time'], df[column], label=column)
 
         plt.xlabel('Relative Time (s)')
-        plt.ylabel('Relative 292 Absorbance (% of t0s)')
+        plt.ylabel('Relative A292 (% of t0s)')
         plt.title(f'Relative Absorbance Over Time \n Column {n}')
         plt.legend()  # to show labels of each scatter plot
         plt.ylim([0, 110])
@@ -124,12 +122,16 @@ def map_sample_names(df, samplemap_path):
     platemap = pd.read_excel(samplemap_path)
     # Create a dictionary from Well Name to Sample Name
     name_dict = platemap.set_index('Well Name')['Sample Name'].to_dict()
-
+    control_dict = platemap.set_index('Well Name')['Control?'].to_dict()
     # Replace column names
-    df.columns = [name_dict.get(col, col) for col in df.columns]
+    df.columns = [
+        (str(name_dict.get(col, col)) + ' (Control)' if isinstance(control_dict.get(col), str)
+         else name_dict.get(col, col))
+        for col in df.columns
+    ]
     df = df.loc[:, df.columns.notnull()]
     # Remove columns not in platemap
-    df_raw = df[[col for col in df.columns if col in name_dict.values()]]
+    df_raw = df[[col for col in df.columns if isinstance(col, str) and not col in ['Relative Time', 'Temperature']]]
     # If there are replicates, consolidate into a column of averages
     df_avg = df_raw.T.groupby(level=0).mean().T
     df_avg.insert(0, 'Relative Time', df['Relative Time'])
@@ -140,28 +142,36 @@ def map_sample_names(df, samplemap_path):
 def scatterplot_samplenames_relative_abs(df, date_time, expt_id, dest_dir):
     headers_to_exclude = ['Relative Time', 'Temperature']
     headers_to_include = [col for col in df.columns if col not in headers_to_exclude]
-    num_cols = len(headers_to_include)
+    # separate control column names
+    control_columns = [col for col in headers_to_include if '(Control)' in col]
+    experiment_columns = [col for col in headers_to_include if '(Control)' not in col]
+    num_cols = len(experiment_columns)
     if num_cols > 10:
         fig, axs = plt.subplots(3, 3, figsize=(25, 15))
         axs = axs.ravel()
-
-        for i, column in enumerate(headers_to_include):
+        # Plot controls
+        for i in range(0,9):
+            ax = axs[i]
+            for control_col in control_columns:
+                ax.scatter(df['Relative Time'], df[control_col], label=control_col, zorder=3, marker='x')
+        for i, column in enumerate(experiment_columns):
             ax = axs[i % 9]  # Determine the appropriate subplot for this plot
             ax.scatter(df['Relative Time'], df[column], label=column)
             ax.set_xlabel('Relative Time (s)')
-            ax.set_ylabel('Relative 292 Absorbance (% of t0s)')
+            ax.set_ylabel('Relative A292 (% of t0s)')
             ax.set_title(f'Relative Absorbance Over Time')
             ax.legend()  # to show labels of each scatter plot
             ax.set_ylim([0, 110])
 
         plt.savefig(dest_dir / f"{date_time}_{expt_id}_SampleNames.png")
+        # plt.show()
         plt.close()
     else:
         plt.figure(figsize=(10, 6))
         for column in headers_to_include:
             plt.scatter(df['Relative Time'], df[column], label=column)
         plt.xlabel('Relative Time (s)')
-        plt.ylabel('Relative 292 Absorbance (% of t0s)')
+        plt.ylabel('Relative A292 (% of t0s)')
         plt.title(f'Relative Absorbance Over Time')
         plt.legend()  # to show labels of each scatter plot
         plt.ylim([0, 110])
@@ -181,9 +191,12 @@ def final_percentage_consumed(df, date_time, expt_id, dest_dir):
     # Perform subtraction
     difference_series = df_subset.iloc[0] - df_subset.iloc[-1]
     difference_series = difference_series.sort_values(ascending=False)
-    difference_series.plot(kind='bar')
+    # Generate color array for plot
+    colors = ['red' if "(Control)" in index else 'blue' for index in difference_series.index]
+    difference_series.plot(kind='bar', color=colors)
     plt.ylabel('15 minute % Consumed')
     plt.title('% of Uric Acid Consumed \nfrom First to Last Plate Read')
+    plt.tight_layout()
     plt.savefig(dest_dir / f"{date_time}_{expt_id}_PercentConsumed.png")
     # plt.show()
     plt.close()
@@ -191,14 +204,14 @@ def final_percentage_consumed(df, date_time, expt_id, dest_dir):
     plt.figure(figsize=(30, 12))
     difference_series = 100 - (df_subset.iloc[0] - df_subset.iloc[-1])
     difference_series = difference_series.sort_values(ascending=True)
-    difference_series.plot(kind='bar')
+    difference_series.plot(kind='bar', color=colors)
     plt.ylabel('15 minute % Uric Acid Remaining')
     plt.title('% of Uric Acid Remaining \nfrom First to Last Plate Read')
+    plt.tight_layout()
     plt.savefig(dest_dir / f"{date_time}_{expt_id}_PercentRemaining.png")
     # plt.show()
     plt.close()
     return
-
 
 
 def final_overall_uric_acid(bg_removed_df, date_time, expt_id, dest_dir):
@@ -210,9 +223,11 @@ def final_overall_uric_acid(bg_removed_df, date_time, expt_id, dest_dir):
     plt.figure(figsize=(30, 12))
     # Perform subtraction
     lastval_series = df_subset.iloc[-1].sort_values(ascending=True)
-    lastval_series.plot(kind='bar')
+    colors = ['red' if "(Control)" in index else 'blue' for index in lastval_series.index]
+    lastval_series.plot(kind='bar', color=colors)
     plt.ylabel('Background Subtracted Abs at 15 Min')
     plt.title('Uric Acid Remaining\nat Last Plate Read')
+    plt.tight_layout()
     plt.savefig(dest_dir / f"{date_time}_{expt_id}_UricAcidRemaining.png")
     # plt.show()
     plt.close()
@@ -224,12 +239,7 @@ yaml_filepath = Path(select_file("YAML File Selection", "yaml"))
 bg_filepath = Path(select_file("Background Read File Selection", "asc"))
 kinetic_filepath = Path(select_file("Kinetic Read File Selection", "asc"))
 platemap_filepath = Path(select_file("Plate Map File Selection", "xlsx"))
-# yaml_filepath = "2024-09-18_12-09-38_Donphan.yaml"
-# bg_filepath = "UoxBG_WCL-240918-002.asc"
-# kinetic_filepath = "UoxKinetic_WCL-240918-003.asc"
-# platemap_filepath = "platemap.xlsx"
 
-# try:
 # Read in YAML file
 yaml_dict = read_yaml(yaml_filepath)
 expt_id = int(yaml_dict['Input Plates'][0][0:4])
@@ -264,8 +274,9 @@ with pd.ExcelWriter(
 # Create Section in LG
 expt = Experiment.from_id(expt_id)
 cur_section = expt.add_section(f"UoxActivity_{yaml_dict['Input Plates'][0]}_{yaml_dict['Start']}", -1)
+# Use Pre-made LG Protocol
 cur_protocol = Protocol.from_id(173)
-
+# Set conditional LG experiment details
 if yaml_dict['Metadata']['Lysis']:
     if yaml_dict['Metadata']['Lysis Buffer'] == "BPer":
         lysis_desc = f"Lysis was performed on the Tecan. The samples were resuspended in {yaml_dict['Metadata']['Lysis Volume']}μL of {yaml_dict['Metadata']['Lysis Buffer']} followed by a 30 minute shaking incubation at 37°C"
@@ -287,7 +298,10 @@ else:
     dilution_desc = (
         f"Samples were diluted by a factor of {yaml_dict['Metadata']['Assay Sample Dilution Factor']} with 100mM Sodium Phosphate buffer in a separate BioRad HardShell PCR Plate. "
         f"{dil_sample_vol}μL of sample was added to {dil_buffer_vol}μL of 100mM Sodium Phosphate buffer in the dilution plate, and the plate was pipet mixed.")
-
+# Add Text and Steps Elements to LG experiment section
+cur_section.add_text_element(cur_protocol.sections[0].elements[0].format_data(
+    input_plate=yaml_dict['Input Plates'][0]
+))
 cur_section.add_steps_element(cur_protocol.sections[0].elements[1].format_data(
     lysis_description=lysis_desc,
     lysate_description=lysate_desc,
@@ -295,9 +309,8 @@ cur_section.add_steps_element(cur_protocol.sections[0].elements[1].format_data(
     sodiumphos_vol=50 - yaml_dict['Metadata']['Assay Sample Volume'],
     sample_vol=yaml_dict['Metadata']['Assay Sample Volume']
 ))
-cur_section.add_text_element(cur_protocol.sections[0].elements[0].format_data(
-    input_plate=yaml_dict['Input Plates'][0]
-))
+
+# List out the input / output filepaths to be attached to the LG Experiment
 output_file_paths = [
     work_dir / f"UoxActivitySummary_{yaml_dict['Input Plates'][0]}_{yaml_dict['Start']}.xlsx",
     yaml_filepath,
@@ -306,8 +319,8 @@ output_file_paths = [
     platemap_filepath,
     scatterplot_path
 ]
-
-cur_token = get_aws_secret('LGAPI_2024','us-east-1')
+# Get the instrument LG Token
+cur_token = get_aws_secret('LGAPI_2024', 'us-east-1')
 # Add attachment section
 attachments_element_resp = requests.post(f'https://my.labguru.com/api/v1/elements', json={
     'token': cur_token,
@@ -319,7 +332,6 @@ attachments_element_resp = requests.post(f'https://my.labguru.com/api/v1/element
         'data': '[]'
     }
 })
-
 # Add attachment
 for cur_path in output_file_paths:
     url = 'https://my.labguru.com/api/v1/attachments'
@@ -332,15 +344,14 @@ for cur_path in output_file_paths:
         files = {
             'token': (None, cur_token),
             'item[attachment]': (filepath.name, file),
-            'item[attach_to_uuid]': (None, '5f3cdd26-9b6a-4117-a59b-3d03b3955d82'),
+            'item[attach_to_uuid]': (None, expt.uuid),
             # 'item[title]': (None, ''),
-            # 'item[description]': (None, 'this is a test'),
             'item[section_id]': (None, cur_section.id),
             'item[element_id]': (None, attachments_element_resp.json()['id'])
         }
         response = requests.post(url, headers=headers, files=files)
 
-jpg_name = str(scatterplot_path).split('\\')[-1].replace('.png','.jpg')
+jpg_name = str(scatterplot_path).split('\\')[-1].replace('.png', '.jpg')
 img_html_path = f'{response.json()["id"]}/annotated/{jpg_name}'
 std_curve_element_response = requests.post(f'https://my.labguru.com/api/v1/elements', json={
     'token': cur_token,
@@ -351,6 +362,3 @@ std_curve_element_response = requests.post(f'https://my.labguru.com/api/v1/eleme
         'data': f'<img class="fancybox-image" src="/user_assets/415072/attachments/{img_html_path}" alt="">'
     }
 })
-cur_section.find_attachments()
-# except:
-#     sys.exit(400)
