@@ -4,7 +4,7 @@ import yaml
 import tkinter as tk
 from tkinter import filedialog
 from Foundry import get_collaboration_path
-from LabGuruAPI import Experiment, Protocol
+from LabGuruAPI import Experiment, Protocol, SESSION
 import os
 import requests
 from pathlib import Path
@@ -279,7 +279,7 @@ cur_protocol = Protocol.from_id(173)
 # Set conditional LG experiment details
 if yaml_dict['Metadata']['Lysis']:
     if yaml_dict['Metadata']['Lysis Buffer'] == "BPer":
-        lysis_desc = f"Lysis was performed on the Tecan. The samples were resuspended in {yaml_dict['Metadata']['Lysis Volume']}μL of {yaml_dict['Metadata']['Lysis Buffer']} followed by a 30 minute shaking incubation at 37°C"
+        lysis_desc = f"Lysis was performed on the Tecan. The samples were resuspended in {yaml_dict['Metadata']['Lysis Volume']}μL of {yaml_dict['Metadata']['Lysis Buffer']} followed by a 30 minute shaking incubation at 25°C"
     else:
         lysis_desc = f"Lysis was performed on the Tecan. The samples were resuspended in {yaml_dict['Metadata']['Lysis Volume']}μL of {yaml_dict['Metadata']['Lysis Buffer']}"
 else:
@@ -320,7 +320,8 @@ output_file_paths = [
     scatterplot_path
 ]
 # Get the instrument LG Token
-cur_token = get_aws_secret('LGAPI_2024', 'us-east-1')
+SESSION.login()
+cur_token = SESSION.token
 # Add attachment section
 attachments_element_resp = requests.post(f'https://my.labguru.com/api/v1/elements', json={
     'token': cur_token,
