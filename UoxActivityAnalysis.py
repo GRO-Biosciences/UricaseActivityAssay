@@ -281,7 +281,7 @@ if yaml_dict['Metadata']['Lysis']:
     if yaml_dict['Metadata']['Lysis Buffer'] == "BPer":
         lysis_desc = f"Lysis was performed on the Tecan. The samples were resuspended in {yaml_dict['Metadata']['Lysis Volume']}μL of {yaml_dict['Metadata']['Lysis Buffer']} followed by a 30 minute shaking incubation at 25°C"
     else:
-        lysis_desc = f"Lysis was performed on the Tecan. The samples were resuspended in {yaml_dict['Metadata']['Lysis Volume']}μL of {yaml_dict['Metadata']['Lysis Buffer']}"
+        lysis_desc = f"Lysis was performed on the Tecan. The samples were resuspended in {yaml_dict['Metadata']['Lysis Volume']}μL of {yaml_dict['Metadata']['Lysis Buffer']}  buffer by pipetting, then incubated at 25 C while shaking at 900 RPM for 30 minutes.\nAdditional sodium chloride and 10% triton x-100 were added to each sample. Samples were mixed by pipetting 1/2 volume 10 times, then shaking at 900 RPM for 1 minute. Samples were left to incubate at 4 C for 5 minutes to mimic the time in between triton addition and sonication as is done in large scale preps."
 else:
     lysis_desc = "Lysis was not performed on the Tecan."
 
