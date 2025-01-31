@@ -11,6 +11,12 @@ from pathlib import Path
 from AWSHelper import get_aws_secret
 
 def select_file(title_str, filetype):
+    """
+    A GUI for selecting the input files
+    :param title_str: string title for the top of the FileExplorer window
+    :param filetype: string detailing what type of file to show in the FileExplorer window
+    :return: the file path of the selected file
+    """
     root = tk.Tk()
     root.withdraw()
     if filetype == "yaml":
@@ -25,6 +31,11 @@ def select_file(title_str, filetype):
 
 
 def read_yaml(yaml_path):
+    """
+    Parse a Tecan FluentControl yaml log file into a dictionary variable
+    :param yaml_path: file path of the input yaml file
+    :return: a dictionary variable storing the contents of the yaml file
+    """
     # read the yaml file
     with open(yaml_path, 'r') as file:
         filedata = file.read()
@@ -40,37 +51,47 @@ def read_yaml(yaml_path):
 
 
 def read_ascii(filepath):
+    """
+    Parse a Tecan Plate Reader ascii results file into a pandas dataframe
+    :param filepath: file path of the input ascii file
+    :return: a python dataframe variable storing the contents of the Tecan Plate Reader ascii results file
+    """
     read_lines = False
     lines = []
     with open(filepath, 'r', encoding='utf-16') as f:
         for line in f:
-            # Start reading when we encounter "Raw data"
+            # Start reading when encountering "Raw data"
             if 'Raw data' in line.strip():
                 read_lines = True
                 continue
 
-            # Stop reading when we encounter "Date of measurement"
+            # Stop reading when encountering "Date of measurement"
             if 'Date of measurement' in line.strip():
                 read_lines = False
                 continue
 
-            # If we should read a line, append it to the list
+            # If we should read a line, append it to the list variable
             if read_lines and "°C" in line:
                 lines.append(line)
 
-    # The lines that we read will be a list of strings. We will need to convert this to a dataframe
-    # Assuming each line is a comma-separated list of values
+    # The lines read will be a list of strings. Convert this to a dataframe
     repeat_headers = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
     headers = ['Relative Time', 'Temperature']
     for i in range(1, 13):
         headers += [f'{header}{i}' for header in repeat_headers]
 
-    # Create empty DataFrame with headers
     df = pd.DataFrame([line.split(',')[:-1] for line in lines], columns=headers)
     return df
 
 
 def remove_background(t0_data, kinetic_data):
+    """
+    Subtract the background absorbance signal of the substrate solution from all kinetic read data points of the
+    substrate plus enzyme solution
+    :param t0_data: pandas dataframe of the substrate only solution absorbance read
+    :param kinetic_data: pandas dataframe of the substrate plus enzyme solution absorbance reads
+    :return: pandas dataframe of the resulting kinetic read values
+    """
     headers_to_exclude = ['Relative Time', 'Temperature']
     headers_to_include = [col for col in kinetic_data.columns if col not in headers_to_exclude]
 
@@ -88,6 +109,12 @@ def remove_background(t0_data, kinetic_data):
 
 
 def standardize_data(df):
+    """
+    Divide all kinetic reads by the first value of the kinetic read for that well such that the initial read is at 1.0
+    and all subsequent reads drop below 1.0 as the substrate is consumed
+    :param df:
+    :return:
+    """
     headers_to_exclude = ['Relative Time', 'Temperature']
     headers_to_include = [col for col in df.columns if col not in headers_to_exclude]
     df[headers_to_include] = df[headers_to_include].div(df.iloc[0]).div(0.01)[headers_to_include]
@@ -95,6 +122,14 @@ def standardize_data(df):
 
 
 def scatterplot_wellnames_relative_abs(df, date_time, expt_id, dest_dir):
+    """
+
+    :param df:
+    :param date_time:
+    :param expt_id:
+    :param dest_dir:
+    :return:
+    """
     headers_to_exclude = ['Relative Time', 'Temperature']
     headers_to_include = [col for col in df.columns if col not in headers_to_exclude]
     for n in range(1, 13):
@@ -119,6 +154,12 @@ def scatterplot_wellnames_relative_abs(df, date_time, expt_id, dest_dir):
 
 
 def map_sample_names(df, samplemap_path):
+    """
+
+    :param df:
+    :param samplemap_path:
+    :return:
+    """
     platemap = pd.read_excel(samplemap_path)
     # Create a dictionary from Well Name to Sample Name
     name_dict = platemap.set_index('Well Name')['Sample Name'].to_dict()
@@ -140,6 +181,14 @@ def map_sample_names(df, samplemap_path):
 
 
 def scatterplot_samplenames_relative_abs(df, date_time, expt_id, dest_dir):
+    """
+
+    :param df:
+    :param date_time:
+    :param expt_id:
+    :param dest_dir:
+    :return:
+    """
     headers_to_exclude = ['Relative Time', 'Temperature']
     headers_to_include = [col for col in df.columns if col not in headers_to_exclude]
     # separate control column names
@@ -182,6 +231,14 @@ def scatterplot_samplenames_relative_abs(df, date_time, expt_id, dest_dir):
 
 
 def final_percentage_consumed(df, date_time, expt_id, dest_dir):
+    """
+
+    :param df:
+    :param date_time:
+    :param expt_id:
+    :param dest_dir:
+    :return:
+    """
     headers_to_exclude = ['Relative Time', 'Temperature']
     headers_to_include = [col for col in df.columns if col not in headers_to_exclude]
 
@@ -215,6 +272,14 @@ def final_percentage_consumed(df, date_time, expt_id, dest_dir):
 
 
 def final_overall_uric_acid(bg_removed_df, date_time, expt_id, dest_dir):
+    """
+
+    :param bg_removed_df:
+    :param date_time:
+    :param expt_id:
+    :param dest_dir:
+    :return:
+    """
     headers_to_exclude = ['Relative Time', 'Temperature']
     headers_to_include = [col for col in bg_removed_df.columns if col not in headers_to_exclude]
 

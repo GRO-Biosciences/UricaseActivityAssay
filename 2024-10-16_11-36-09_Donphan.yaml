@@ -1,0 +1,14 @@
+Start: 2024-10-16_11-36-09
+User: Mark Cerutti
+Protocol:
+    Name: Pierce 660 Full Plate v1.0
+    Version: 1
+Input Plates:
+    - 2237-TST-0001
+Output Plates:
+    - 2237-PRC-0001
+    - 2237-PRC-0002
+Metadata:
+    Source Plate Type: PCR
+    Dilution Factor: 2
+End: 2024-10-16_11-47-24
